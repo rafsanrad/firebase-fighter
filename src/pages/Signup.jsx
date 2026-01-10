@@ -2,7 +2,11 @@ import { FaEye } from "react-icons/fa";
 import { IoEyeOff } from "react-icons/io5";
 import { Link } from "react-router";
 import MyContainer from "../components/MyContainer";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  updateProfile,
+} from "firebase/auth";
 import { auth } from "../firebase/firebase.config";
 import { toast } from "react-toastify";
 import { useState } from "react";
@@ -11,6 +15,8 @@ const Signup = () => {
   const [show, setShow] = useState(false);
   const handleSignup = (e) => {
     e.preventDefault();
+    const displayName = e.target.name?.value;
+    const photoURL = e.target.photo?.value;
     const email = e.target.email?.value;
     const password = e.target.password?.value;
     console.log("sign up function called", { email, password });
@@ -29,10 +35,29 @@ const Signup = () => {
       return;
     }
 
+
+    //1st step: user cration
     createUserWithEmailAndPassword(auth, email, password)
       .then((res) => {
-        console.log(res);
-        toast.success("Signup successful");
+        //2nd step:set profile update asynchronous function.
+        updateProfile(res.user, {
+          displayName,
+          photoURL,
+        })
+          .then(() => {
+            //3rd step:set email verification function.
+            sendEmailVerification(res.user)
+              .then((res) => {
+                console.log(res);
+                toast.success("Signup successful.Check your email to validate your account.");
+              })
+              .catch((e) => {
+                toast.error(e.message);
+              });
+          })
+          .catch((e) => {
+            toast.error(e.message);
+          });
       })
       .catch((e) => {
         console.log(e.code);
@@ -97,7 +122,7 @@ const Signup = () => {
                 <input
                   type="text"
                   name="name"
-                  placeholder="Habib utsho"
+                  placeholder="Your Name"
                   className="input input-bordered w-full bg-white/20 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-pink-400"
                 />
               </div>

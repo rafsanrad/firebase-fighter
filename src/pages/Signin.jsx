@@ -1,18 +1,28 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Link } from "react-router";
 import MyContainer from "../components/MyContainer";
 import { FaEye } from "react-icons/fa";
 import { IoEyeOff } from "react-icons/io5";
-import { GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, signOut } from "firebase/auth";
+import {
+  GithubAuthProvider,
+  GoogleAuthProvider,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+} from "firebase/auth";
 import { auth } from "../firebase/firebase.config";
 import { toast } from "react-toastify";
 
-
-
 const googleProvider = new GoogleAuthProvider();
+const githubProvider = new GithubAuthProvider();
+
 const Signin = () => {
   const [user, setUser] = useState({});
   const [show, setShow] = useState(false);
+  //   const [email, setEmail] = useState(null);
+  const emailRef = useRef(null);  //dom reference use kore input field er value gulo ana jaay.
+
   const handleSignin = (e) => {
     e.preventDefault();
     const email = e.target.email?.value;
@@ -20,6 +30,10 @@ const Signin = () => {
     console.log("sign in function called", { email, password });
     signInWithEmailAndPassword(auth, email, password)
       .then((res) => {
+        if (!res.user?.emailVerified) {
+          toast.error("Your email is not verified.");
+          return;
+        }
         console.log(res);
         setUser(res.user);
         toast.success("SignIn successful");
@@ -31,8 +45,8 @@ const Signin = () => {
   };
 
   const handleGoogleSignin = () => {
-    signInWithPopup(auth,googleProvider)
-    .then((res) => {
+    signInWithPopup(auth, googleProvider)
+      .then((res) => {
         console.log(res);
         setUser(res.user);
         toast.success("SignIn successful");
@@ -43,22 +57,42 @@ const Signin = () => {
       });
   };
 
-  const handleGithubSignin = () => {};
+  const handleGithubSignin = () => {
+    signInWithPopup(auth, githubProvider)
+      .then((res) => {
+        console.log(res);
+        setUser(res.user);
+        toast.success("SignIn successful");
+      })
+      .catch((e) => {
+        console.log(e);
+        toast.error(e.message);
+      });
+  };
 
   const handleForgetPassword = () => {
-    console.log();
-  };
-  const handleSignout=()=>{
-    signOut(auth)
-    .then(()=>{
-        toast.success("SignOut successful")
-        setUser(null)
-    })
-    .catch(e=>{
+      // console.log(emailRef.current.value);
+      const email=emailRef.current.value
+      sendPasswordResetEmail(auth, email) //email ta pawar jonno emailRef use kore email ta anlam.
+      .then(res=>{
+        console.log(res)
+        toast.success("Check your email to reset password.")
+      })
+      .catch(e=>{
         toast.error(e.message)
-    })
-  }
-//   console.log(user);
+      })
+  };
+  const handleSignout = () => {
+    signOut(auth)
+      .then(() => {
+        toast.success("SignOut successful");
+        setUser(null);
+      })
+      .catch((e) => {
+        toast.error(e.message);
+      });
+  };
+  // console.log(email);
 
   return (
     <div className="min-h-[calc(100vh-20px)] flex items-center justify-center bg-linear-to-br from-blue-500 via-indigo-600 to-purple-600 relative overflow-hidden">
@@ -85,10 +119,16 @@ const Signin = () => {
           <div className="w-full max-w-md backdrop-blur-lg bg-white/10 border border-white/20 shadow-2xl rounded-2xl p-8">
             {user ? (
               <div className="text-center space-y-3">
-                <img src={user?.photoURL || "https://via.placeholder.com/88"} className="h-20 w-20 rounded-full mx-auto" alt="" />
+                <img
+                  src={user?.photoURL || "https://via.placeholder.com/88"}
+                  className="h-20 w-20 rounded-full mx-auto"
+                  alt=""
+                />
                 <h2 className="font-semibold text-xl">{user?.displayName}</h2>
                 <p className="text-white/80">{user?.email}</p>
-                <button onClick={handleSignout}  className="my-btn">Sign Out</button>
+                <button onClick={handleSignout} className="my-btn">
+                  Sign Out
+                </button>
               </div>
             ) : (
               <form onSubmit={handleSignin} className="space-y-5">
@@ -101,6 +141,7 @@ const Signin = () => {
                   <input
                     type="email"
                     name="email"
+                    ref={emailRef}
                     // value={email}
                     // onChange={(e) => setEmail(e.target.value)}
                     placeholder="example@email.com"
@@ -124,10 +165,11 @@ const Signin = () => {
                   </span>
                 </div>
 
+                {/* forget password button */}
                 <button
                   className="hover:underline cursor-pointer"
                   onClick={handleForgetPassword}
-                  type="button"
+                  type="button" //eta na dile form submit hoye handlesignIn k call kore dibe.
                 >
                   Forget password?
                 </button>
